@@ -1,0 +1,37 @@
+import SwiftUI
+
+struct FinanceView: View {
+    @State private var showingAddSheet = false
+    @State private var mode: String = "income"
+    
+    var body: some View {
+        NavigationView {
+            VStack(spacing: 20) {
+                HStack {
+                    Text("Плановая сумма")
+                    Spacer()
+                    Text("50000 ₽").font(.headline)
+                }
+                .padding()
+                .background(Color.gray.opacity(0.1))
+                .cornerRadius(10)
+                
+                Text("Текущий баланс: 12500 ₽")
+                    .font(.title2)
+                    .fontWeight(.bold)
+                
+                HStack(spacing: 30) {
+                    Button(action: { mode = "expense"; showingAddSheet = true }) {
+                        Text("Расход").frame(width: 140, height: 50)
+                            .background(Color.red).foregroundColor(.white).cornerRadius(12)
+                    }
+                    Button(action: { mode = "income"; showingAddSheet = true }) {
+                        Text("Доход").frame(width: 140, height: 50)
+                            .background(Color.green).foregroundColor(.white).cornerRadius(12)
+                    }
+                }
+            }
+            .navigationTitle("Кошелек")
+        }
+    }
+}

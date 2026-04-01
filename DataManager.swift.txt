@@ -1,0 +1,13 @@
+import Foundation
+
+class DataManager {
+    static let shared = DataManager()
+    
+    func getCurrentBalance() -> Double {
+        return 12500
+    }
+    
+    func getPlannedSum() -> Double {
+        return 50000
+    }
+}
