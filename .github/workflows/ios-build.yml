@@ -8,7 +8,6 @@ on:
 env:
   APPLE_ID: ${{ secrets.APPLE_ID }}
   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
-  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
 jobs:
   build:
@@ -19,45 +18,45 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Setup keychain for signing
+    - name: Show available Xcode
       run: |
-        # Создаём временный ключ
-        security create-keychain -p actions build.keychain
-        security default-keychain -s build.keychain
-        security unlock-keychain -p actions build.keychain
-        security set-keychain-settings -lut 21600 build.keychain
-        
-        # Добавляем учётные данные
-        if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ]; then
-          xcodebuild -downloadAllPlatforms
-          echo "✅ Apple ID настроен"
-        fi
+        xcodebuild -version
+        xcrun --show-sdk-version
         
     - name: List schemes
       run: |
         echo "=== Схемы проекта ==="
         xcodebuild -project FinanceFood.xcodeproj -list
         
-    - name: Build Archive
+    - name: Build Archive (Automatic Signing)
       run: |
-        echo "=== Создаём архив ==="
+        echo "=== Создаём архив с авто-подписью ==="
         mkdir -p build
         
-        # Определяем team ID
-        TEAM_ARG=""
-        if [ -n "$APPLE_TEAM_ID" ]; then
-          TEAM_ARG="-developmentTeam $APPLE_TEAM_ID"
-        fi
-        
+        # Сначала попробуем без явного указания команды
         xcodebuild -project FinanceFood.xcodeproj \
           -scheme FinanceFood \
           -configuration Release \
+          -destination 'generic/platform=iOS' \
           -archivePath build/FinanceFood.xcarchive \
           -allowProvisioningUpdates \
-          -allowProvisioningDeviceRegistration \
           -skipUnavailableActions \
-          $TEAM_ARG \
-          clean archive
+          CODE_SIGN_STYLE=Automatic \
+          DEVELOPMENT_TEAM="" \
+          clean archive || {
+            echo "Первая попытка не удалась, пробуем с Apple ID..."
+            
+            # Если не сработало, используем Apple ID
+            xcodebuild -project FinanceFood.xcodeproj \
+              -scheme FinanceFood \
+              -configuration Release \
+              -destination 'generic/platform=iOS' \
+              -archivePath build/FinanceFood.xcarchive \
+              -allowProvisioningUpdates \
+              -skipUnavailableActions \
+              CODE_SIGN_STYLE=Automatic \
+              clean archive
+          }
           
         echo "=== Проверка архива ==="
         ls -la build/
@@ -71,7 +70,29 @@ jobs:
           -archivePath build/FinanceFood.xcarchive \
           -exportPath build/ios \
           -exportOptionsPlist export_options.plist \
-          -allowProvisioningUpdates
+          -allowProvisioningUpdates || {
+            echo "Экспорт не удался. Пробуем упрощённый export_options..."
+            
+            # Создаём упрощённый plist
+            cat > /tmp/export.plist << EOF
+            <?xml version="1.0" encoding="UTF-8"?>
+            <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+            <plist version="1.0">
+            <dict>
+                <key>method</key>
+                <string>development</string>
+                <key>signingStyle</key>
+                <string>automatic</string>
+            </dict>
+            </plist>
+            EOF
+            
+            xcodebuild -exportArchive \
+              -archivePath build/FinanceFood.xcarchive \
+              -exportPath build/ios \
+              -exportOptionsPlist /tmp/export.plist \
+              -allowProvisioningUpdates
+          }
           
         echo "=== Проверка IPA ==="
         ls -la build/ios/
