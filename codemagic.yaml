@@ -1,0 +1,34 @@
+workflows:
+  ios-workflow:
+    name: iOS Build
+    max_build_duration: 30
+    instance_type: mac_mini_m2
+    
+    environment:
+      xcode: latest
+      cocoapods: default
+    
+    scripts:
+      - name: Build iOS app
+        script: |
+          xcodebuild -project FinanceFood.xcodeproj \
+            -scheme FinanceFood \
+            -configuration Release \
+            -archivePath build/FinanceFood.xcarchive \
+            -allowProvisioningUpdates \
+            -skipUnavailableActions \
+            clean archive
+            
+          xcodebuild -exportArchive \
+            -archivePath build/FinanceFood.xcarchive \
+            -exportPath build/ios \
+            -exportOptionsPlist export_options.plist \
+            -allowProvisioningUpdates
+    
+    artifacts:
+      - build/ios/*.ipa
+    
+    publishing:
+      email:
+        recipients:
+          - ${APPLE_ID}
