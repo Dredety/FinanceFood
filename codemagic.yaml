@@ -27,8 +27,3 @@ workflows:
     
     artifacts:
       - build/ios/*.ipa
-    
-    publishing:
-      email:
-        recipients:
-          - ${APPLE_ID}
