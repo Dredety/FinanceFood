@@ -1,0 +1,40 @@
+name: iOS Build
+
+on:
+  push:
+    branches: [ main ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    name: Build iOS App
+    runs-on: macos-latest
+    
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+      
+    - name: Select Xcode
+      run: sudo xcode-select -s /Applications/Xcode_15.2.app/Contents/Developer
+      
+    - name: Build IPA
+      run: |
+        xcodebuild -project FinanceFood.xcodeproj \
+          -scheme FinanceFood \
+          -configuration Release \
+          -archivePath build/FinanceFood.xcarchive \
+          -allowProvisioningUpdates \
+          clean archive
+          
+        xcodebuild -exportArchive \
+          -archivePath build/FinanceFood.xcarchive \
+          -exportPath build/ios \
+          -exportOptionsPlist export_options.plist \
+          -allowProvisioningUpdates
+        
+    - name: Upload IPA
+      uses: actions/upload-artifact@v4
+      with:
+        name: FinanceFood-iPA
+        path: build/ios/*.ipa
+        retention-days: 7
