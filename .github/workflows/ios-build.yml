@@ -8,6 +8,7 @@ on:
 env:
   APPLE_ID: ${{ secrets.APPLE_ID }}
   APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+  APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
 
 jobs:
   build:
@@ -18,22 +19,46 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: List available schemes
+    - name: Setup keychain for signing
       run: |
-        echo "=== Доступные схемы ==="
+        # Создаём временный ключ
+        security create-keychain -p actions build.keychain
+        security default-keychain -s build.keychain
+        security unlock-keychain -p actions build.keychain
+        security set-keychain-settings -lut 21600 build.keychain
+        
+        # Добавляем учётные данные
+        if [ -n "$APPLE_ID" ] && [ -n "$APPLE_PASSWORD" ]; then
+          xcodebuild -downloadAllPlatforms
+          echo "✅ Apple ID настроен"
+        fi
+        
+    - name: List schemes
+      run: |
+        echo "=== Схемы проекта ==="
         xcodebuild -project FinanceFood.xcodeproj -list
         
     - name: Build Archive
       run: |
         echo "=== Создаём архив ==="
         mkdir -p build
+        
+        # Определяем team ID
+        TEAM_ARG=""
+        if [ -n "$APPLE_TEAM_ID" ]; then
+          TEAM_ARG="-developmentTeam $APPLE_TEAM_ID"
+        fi
+        
         xcodebuild -project FinanceFood.xcodeproj \
           -scheme FinanceFood \
           -configuration Release \
           -archivePath build/FinanceFood.xcarchive \
           -allowProvisioningUpdates \
+          -allowProvisioningDeviceRegistration \
           -skipUnavailableActions \
+          $TEAM_ARG \
           clean archive
+          
         echo "=== Проверка архива ==="
         ls -la build/
         
@@ -41,11 +66,13 @@ jobs:
       run: |
         echo "=== Экспортируем IPA ==="
         mkdir -p build/ios
+        
         xcodebuild -exportArchive \
           -archivePath build/FinanceFood.xcarchive \
           -exportPath build/ios \
           -exportOptionsPlist export_options.plist \
           -allowProvisioningUpdates
+          
         echo "=== Проверка IPA ==="
         ls -la build/ios/
         
