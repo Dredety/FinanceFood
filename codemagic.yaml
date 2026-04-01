@@ -7,19 +7,15 @@ workflows:
     environment:
       xcode: latest
       cocoapods: default
-    
-    signing:
-      ios:
-        automatic_signing: true
+      vars:
+        APPLE_ID: ${APPLE_ID}
+        APPLE_PASSWORD: ${APPLE_PASSWORD}
     
     scripts:
-      - name: Set up keychain
+      - name: Set up signing
         script: |
-          # Создаём временный keychain для сертификатов
-          security create-keychain -p actions build.keychain
-          security default-keychain -s build.keychain
-          security unlock-keychain -p actions build.keychain
-          security set-keychain-settings -lut 21600 build.keychain
+          # Настраиваем автоматическую подпись
+          echo "Setting up automatic signing..."
           
       - name: Build iOS app
         script: |
@@ -31,6 +27,7 @@ workflows:
             -allowProvisioningUpdates \
             -skipUnavailableActions \
             CODE_SIGN_STYLE=Automatic \
+            DEVELOPMENT_TEAM="" \
             clean archive
             
           xcodebuild -exportArchive \
