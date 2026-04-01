@@ -18,24 +18,36 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: List available Xcode versions
-      run: ls -d /Applications/Xcode*.app
-      
-    - name: Build IPA with automatic signing
+    - name: List available schemes
       run: |
+        echo "=== Доступные схемы ==="
+        xcodebuild -project FinanceFood.xcodeproj -list
+        
+    - name: Build Archive
+      run: |
+        echo "=== Создаём архив ==="
+        mkdir -p build
         xcodebuild -project FinanceFood.xcodeproj \
           -scheme FinanceFood \
           -configuration Release \
           -archivePath build/FinanceFood.xcarchive \
           -allowProvisioningUpdates \
-          -automaticCodeSigningDev \
-          clean archive || true
-          
+          -skipUnavailableActions \
+          clean archive
+        echo "=== Проверка архива ==="
+        ls -la build/
+        
+    - name: Export IPA
+      run: |
+        echo "=== Экспортируем IPA ==="
+        mkdir -p build/ios
         xcodebuild -exportArchive \
           -archivePath build/FinanceFood.xcarchive \
           -exportPath build/ios \
           -exportOptionsPlist export_options.plist \
-          -allowProvisioningUpdates || true
+          -allowProvisioningUpdates
+        echo "=== Проверка IPA ==="
+        ls -la build/ios/
         
     - name: Upload IPA
       uses: actions/upload-artifact@v4
